@@ -1,0 +1,225 @@
+allow_rejection: false
+allow_revocable: false
+batch_norm: false
+batch_size: 128
+clip_grad: true
+coef_critic_loss: 0.5
+coef_entropy_loss: 0.01
+coef_mask_loss: 0.01
+compute_cost_method: reachability
+cuda_id: 0
+decode_strategy: greedy
+distributed_training: true
+dropout_prob: 0.0
+embedding_dim: 128
+eps_clip: 0.2
+eval_interval: 10
+explore_rate: 0.9
+gae_lambda: 0.98
+hidden_dim: 128
+host_name: MacBook-Air-cua-Hung.local
+if_save_config: true
+if_save_records: true
+if_temp_save_records: true
+infer_with_single_task_policy_id: 0
+k_searching: 3
+k_shortest: 10
+l2reg_rate: 0.00025
+link_ranking_method: order
+link_resource_unit_price: 1.0
+lr: 0.001
+lr_actor: 0.001
+lr_cost_critic: 0.001
+lr_critic: 0.001
+lr_penalty_params: 0.1
+mask_actions: true
+maskable_policy: true
+matching_mathod: greedy
+max_grad_norm: 0.5
+node_ranking_method: order
+node_resource_unit_price: 1.0
+norm_advantage: true
+norm_critic_loss: false
+num_epochs: 1
+num_gnn_layers: 5
+num_layers: 1
+num_meta_learning_epochs: 50
+num_train_epochs: 0
+num_workers: 1
+p_net_dataset_dir: dataset/p_net/Geant-cpu_[50-100]-max_cpu_None-gpu_[50-100]-max_gpu_None-ram_[50-100]-max_ram_None-bw_[50-100]-max_bw_None
+p_net_name: true
+p_net_setting:
+  file_name: p_net.gml
+  link_attrs_setting:
+  - distribution: uniform
+    dtype: int
+    generative: true
+    high: 100
+    low: 50
+    name: bw
+    owner: link
+    type: resource
+  - name: max_bw
+    originator: bw
+    owner: link
+    type: extrema
+  node_attrs_setting:
+  - distribution: uniform
+    dtype: int
+    generative: true
+    high: 100
+    low: 50
+    name: cpu
+    owner: node
+    type: resource
+  - name: max_cpu
+    originator: cpu
+    owner: node
+    type: extrema
+  - distribution: uniform
+    dtype: int
+    generative: true
+    high: 100
+    low: 50
+    name: gpu
+    owner: node
+    type: resource
+  - name: max_gpu
+    originator: gpu
+    owner: node
+    type: extrema
+  - distribution: uniform
+    dtype: int
+    generative: true
+    high: 100
+    low: 50
+    name: ram
+    owner: node
+    type: resource
+  - name: max_ram
+    originator: ram
+    owner: node
+    type: extrema
+  num_nodes: 40
+  save_dir: dataset/p_net
+  topology:
+    file_path: dataset/topology/Geant.gml
+    type: waxman
+    wm_alpha: 0.5
+    wm_beta: 0.2
+p_net_setting_num_link_attrs: 2
+p_net_setting_num_link_extrema_attrs: 1
+p_net_setting_num_link_resource_attrs: 1
+p_net_setting_num_node_attrs: 6
+p_net_setting_num_node_extrema_attrs: 3
+p_net_setting_num_node_resource_attrs: 3
+p_net_setting_num_nodes: 40
+p_net_setting_path: settings/p_net_setting_multi_resource.yaml
+p_net_topology: geant
+policy_entropy_threshold: 2.0
+pretrained_model_path: ''
+pretrained_subsolver_model_path: ''
+r2c_ratio_threshold: 0.0
+renew_v_net_simulator: false
+repeat_times: 10
+reusable: false
+revenue_service_time_weight: 0.001
+revenue_start_price_weight: 1.0
+reward_weight: 0.1
+rl_gamma: 0.99
+run_id: MacBook-Air-cua-Hung.local-20260327T094742
+run_time: 20260327T094742
+save_dir: save/
+save_interval: 10
+seed: 0
+shortest_method: bfs_shortest
+solver_name: nrm_rank
+srl_alpha: 1.0
+srl_beta: 0.1
+srl_cost_budget: 0.2
+sub_solver_name: nrm_rank
+summary_dir: save/
+summary_file_name: global_summary.csv
+target_steps: 256
+time_window_size: 100
+use_baseline_solver: false
+use_bidirectional_action: true
+use_cuda: true
+use_curriculum_scheduling_strategy: false
+use_meta_learning: true
+use_negative_sample: true
+v_sim_setting:
+  arrival_rate:
+    distribution: possion
+    dtype: float
+    lam: 0.08
+    reciprocal: true
+  events_file_name: events.yaml
+  lifetime:
+    distribution: exponential
+    dtype: float
+    scale: 500
+  link_attrs_setting:
+  - distribution: uniform
+    dtype: int
+    generative: true
+    high: 20
+    low: 0
+    name: bw
+    owner: link
+    type: resource
+  node_attrs_setting:
+  - distribution: uniform
+    dtype: int
+    generative: true
+    high: 20
+    low: 0
+    name: cpu
+    owner: node
+    type: resource
+  - distribution: uniform
+    dtype: int
+    generative: true
+    high: 20
+    low: 0
+    name: gpu
+    owner: node
+    type: resource
+  - distribution: uniform
+    dtype: int
+    generative: true
+    high: 20
+    low: 0
+    name: ram
+    owner: node
+    type: resource
+  num_v_nets: 1
+  save_dir: dataset/v_nets
+  setting_file_name: v_sim_setting.yaml
+  topology:
+    random_prob: 0.5
+    type: random
+  v_net_size:
+    distribution: uniform
+    dtype: int
+    high: 10
+    low: 2
+  v_nets_file_name: v_net.gml
+  v_nets_save_dir: v_nets
+v_sim_setting_aver_arrival_rate: 0.08
+v_sim_setting_aver_lifetime: 500
+v_sim_setting_link_resource_attrs_high: 20
+v_sim_setting_link_resource_attrs_low: 0
+v_sim_setting_node_resource_attrs_high: 20
+v_sim_setting_node_resource_attrs_low: 0
+v_sim_setting_num_link_attrs: 1
+v_sim_setting_num_link_resource_attrs: 1
+v_sim_setting_num_node_attrs: 3
+v_sim_setting_num_node_resource_attrs: 3
+v_sim_setting_num_v_nets: 1
+v_sim_setting_path: settings/v_sim_setting_multi_resource.yaml
+v_sim_setting_v_net_size_high: 10
+v_sim_setting_v_net_size_low: 2
+verbose: 1
+vn_size_threshold: 0.0
+weight_decay: 1.0e-05
