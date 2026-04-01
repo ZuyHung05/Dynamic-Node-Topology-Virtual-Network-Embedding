@@ -36,6 +36,7 @@ class VirtualNetworkRequestSimulator(object):
         super(VirtualNetworkRequestSimulator, self).__init__()
         self.v_sim_setting = copy.deepcopy(v_sim_setting)
         self.num_v_nets = self.v_sim_setting.get('num_v_nets', 2000)
+        self.time_slots = list(self.v_sim_setting.get('time_slots', []))
 
         self.aver_arrival_rate = self.v_sim_setting['arrival_rate']['lam']
 
@@ -77,10 +78,19 @@ class VirtualNetworkRequestSimulator(object):
         """Generate virtual networks and arrange them"""
         self.arrange_v_nets()
         def create_v_net(i):
+            arrival_time = float(self.v_nets_arrival_time[i])
+            lifetime = float(self.v_nets_lifetime[i])
+            departure_time = float(arrival_time + lifetime)
             v_net = VirtualNetwork(
                 node_attrs_setting=copy.deepcopy(self.v_sim_setting['node_attrs_setting']), 
                 link_attrs_setting=copy.deepcopy(self.v_sim_setting['link_attrs_setting']),
-                id=int(i), arrival_time=float(self.v_nets_arrival_time[i]), lifetime=float(self.v_nets_lifetime[i]))
+                id=int(i),
+                arrival_time=arrival_time,
+                lifetime=lifetime,
+                departure_time=departure_time,
+            )
+            if self.time_slots:
+                v_net.set_graph_attribute('time_slots', copy.deepcopy(self.time_slots))
             if 'max_latency' in self.v_sim_setting:
                 v_net.set_graph_attribute('max_latency', float(self.v_nets_max_latency[i]))
             v_net.generate_topology(num_nodes=self.v_nets_size[i], **self.v_sim_setting['topology'])
@@ -93,7 +103,7 @@ class VirtualNetworkRequestSimulator(object):
         """Generate events, including virtual network arrival and leave events"""
         self.events = []
         enter_list = [{'v_net_id': int(v_net.id), 'time': float(v_net.arrival_time), 'type': 1} for v_net in self.v_nets]
-        leave_list = [{'v_net_id': int(v_net.id), 'time': float(v_net.arrival_time + v_net.lifetime), 'type': 0} for v_net in self.v_nets]
+        leave_list = [{'v_net_id': int(v_net.id), 'time': float(getattr(v_net, 'departure_time', v_net.arrival_time + v_net.lifetime)), 'type': 0} for v_net in self.v_nets]
         event_list = enter_list + leave_list
         self.events = sorted(event_list, key=lambda e: e.__getitem__('time'))
         for i, e in enumerate(self.events): 
@@ -121,6 +131,13 @@ class VirtualNetworkRequestSimulator(object):
         for e_info in self.events:
             self.v2event_dict[(e_info['v_net_id'], e_info['type'])] = e_info['id']
         return self.v2event_dict
+
+    def get_active_v_nets(self, time_slot):
+        """Return virtual requests active at the specified time slot."""
+        return [
+            v_net for v_net in self.v_nets
+            if v_net.arrival_time <= time_slot <= getattr(v_net, 'departure_time', v_net.arrival_time + v_net.lifetime)
+        ]
 
     def save_dataset(self, save_dir):
         """Save the dataset to a directory"""

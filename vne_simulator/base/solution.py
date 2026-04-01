@@ -57,6 +57,7 @@ class Solution(ClassDict):
         self.v_net_id = v_net.id
         self.v_net_lifetime = v_net.lifetime
         self.v_net_arrival_time = v_net.arrival_time
+        self.v_net_departure_time = getattr(v_net, 'departure_time', v_net.arrival_time + v_net.lifetime)
         self.v_net_num_nodes = v_net.num_nodes
         self.v_net_num_egdes = v_net.num_links
         self.reset()
@@ -68,6 +69,11 @@ class Solution(ClassDict):
         self.link_paths = OrderedDict()
         self.node_slots_info = OrderedDict()
         self.link_paths_info = OrderedDict()
+        self.node_slots_by_time = OrderedDict()
+        self.link_paths_by_time = OrderedDict()
+        self.node_migrations = OrderedDict()
+        self.active_time_slots = []
+        self.current_time_slot = None
         self.v_net_cost = 0
         self.v_net_revenue = 0
         self.v_net_demand = 0

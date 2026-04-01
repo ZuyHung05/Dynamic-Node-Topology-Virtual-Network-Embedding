@@ -44,7 +44,7 @@ class Generator:
         random.seed(config['seed'])
         np.random.seed(config['seed'])
         
-        p_net = PhysicalNetwork.from_setting(p_net_setting)
+        p_net = PhysicalNetwork.from_setting(p_net_setting, seed=config['seed'])
 
         if save:
             p_net_dataset_dir = get_p_net_dataset_dir_from_setting(p_net_setting)
@@ -74,7 +74,7 @@ class Generator:
         np.random.seed(config['seed'])
 
         v_net_simulator = VirtualNetworkRequestSimulator.from_setting(v_sim_setting)
-        v_net_simulator.renew()
+        v_net_simulator.renew(seed=config['seed'])
 
         if save:
             v_nets_dataset_dir = get_v_nets_dataset_dir_from_setting(v_sim_setting)

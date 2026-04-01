@@ -44,7 +44,7 @@ class Attribute(object):
             elif self.distribution in ['exponential']:
                 self.scale = kwargs.get('scale', 1.)
             elif self.distribution in ['possion']:
-                self.scale = kwargs.get('lam', 1.)
+                self.lam = kwargs.get('lam', 1.)
             elif self.distribution in ['customized']:
                 self.min = kwargs.get('min', 0.)
                 self.max = kwargs.get('max', 1.)
@@ -311,8 +311,10 @@ ATTRIBUTES_DICT = {
     # Resource
     ('node', 'resource'): NodeResourceAttribute,
     ('node', 'extrema'): NodeExtremaAttribute,
+    ('node', 'info'): NodeInfoAttribute,
     ('link', 'resource'): LinkResourceAttribute,
     ('link', 'extrema'): LinkExtremaAttribute,
+    ('link', 'info'): LinkInfoAttribute,
     # Fixed
     ('node', 'position'): NodePositionAttribute,
     ('link', 'latency'): LinkLatencyAttribute,

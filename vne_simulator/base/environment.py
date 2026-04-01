@@ -77,14 +77,24 @@ class Environment:
             event_id: the id of the event to be processed.
         """
         self.curr_event = self.v_net_simulator.events[event_id]
+        self.curr_time_slot = self.curr_event['time']
         self.num_processed_v_nets += 1
         self.v_net = self.v_net_simulator.v_nets[int(self.curr_event['v_net_id'])]
         self.solution = Solution(self.v_net)
+        self.solution.current_time_slot = self.curr_time_slot
+        if hasattr(self.solution, 'active_time_slots'):
+            self.solution.active_time_slots = [self.curr_time_slot]
+        if hasattr(self.p_net, 'update_event_state'):
+            self.p_net.update_event_state(self.curr_time_slot, event_id=event_id, seed=self.seed)
+        elif hasattr(self.p_net, 'active_time_slot'):
+            self.p_net.active_time_slot = self.curr_time_slot
+        if hasattr(self.v_net, 'set_graph_attribute'):
+            self.v_net.set_graph_attribute('active_time_slot', self.curr_time_slot)
         self.p_net_backup = copy.deepcopy(self.p_net) if self.curr_event['type'] == 1 else None
         self.recorder.update_state({
             'event_id': self.curr_event['id'],
             'event_type': self.curr_event['type'],
-            'event_time': self.curr_event['time'],
+            'event_time': self.curr_time_slot,
         })
         # self.recorder.ready(self.curr_event)
         if self.verbose >= 2:

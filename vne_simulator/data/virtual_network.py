@@ -22,18 +22,18 @@ class VirtualNetwork(Network):
 
     @property
     def total_node_resource_demand(self):
-        n = np.array(self.get_node_attrs_data(self.get_node_attrs('resource'))).sum()
+        n = np.array(self.get_node_attrs_data(self.get_node_attrs(types=['resource']))).sum()
         return n
 
     @property
     def total_link_resource_demand(self):
-        e = np.array(self.get_link_attrs_data(self.get_link_attrs('resource'))).sum()
+        e = np.array(self.get_link_attrs_data(self.get_link_attrs(types=['resource']))).sum()
         return e
 
     @cached_property
     def total_resource_demand(self):
-        n = np.array(self.get_node_attrs_data(self.get_node_attrs('resource'))).sum()
-        e = np.array(self.get_link_attrs_data(self.get_link_attrs('resource'))).sum()
+        n = np.array(self.get_node_attrs_data(self.get_node_attrs(types=['resource']))).sum()
+        e = np.array(self.get_link_attrs_data(self.get_link_attrs(types=['resource']))).sum()
         return n + e
 
 if __name__ == '__main__':

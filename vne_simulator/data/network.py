@@ -83,7 +83,7 @@ class Network(nx.Graph):
             **kwargs: additional keyword arguments required for certain graph types
         """
         assert num_nodes >= 1
-        assert type in ['path', 'star', 'waxman', 'random'], ValueError('Unsupported graph type!')
+        assert type in ['path', 'star', 'grid_2d', 'waxman', 'random'], ValueError('Unsupported graph type!')
         self.set_graph_attrs_data({'num_nodes': num_nodes, 'type': type})
         if type == 'path':
             G = nx.path_graph(num_nodes)
@@ -288,6 +288,8 @@ class Network(nx.Graph):
     ### Get Data ###
     def get_node_attrs_data(self, node_attrs):
         """Get the data of node attributes."""
+        if not node_attrs:
+            return []
         if isinstance(node_attrs[0], str):
             node_attrs_data = [list(nx.get_node_attributes(self, n_attr_name).values()) for n_attr_name in node_attrs]
         else:
@@ -296,6 +298,8 @@ class Network(nx.Graph):
 
     def get_link_attrs_data(self, link_attrs):
         """Get the data of link attributes."""
+        if not link_attrs:
+            return []
         if isinstance(link_attrs[0], str):
             link_attrs_data = [list(nx.get_edge_attributes(self, l_attr_name).values()) for l_attr_name in link_attrs]
         else:
@@ -333,23 +337,25 @@ class Network(nx.Graph):
     ### Update ###
     def update_node_resources(self, node_id, v_net_node, method='+'):
         """Update (increase) the value of node atributes."""
-        for n_attr in self.node_attrs.keys():
+        for n_attr in self.node_attrs.values():
             if n_attr.type != 'resource':
                 continue
-            n_attr.update(self.nodes[node_id], v_net_node, method)
+            n_attr.update(v_net_node, self.nodes[node_id], method)
 
     def update_link_resources(self, link_pair, v_net_link, method='+'):
         """Update (increase) the value of link atributes."""
-        for l_attr in self.link_attrs:
+        for l_attr in self.link_attrs.values():
             if l_attr.type != 'resource':
                 continue
-            l_attr.update(self.links[link_pair], v_net_link, method)
+            l_attr.update(v_net_link, self.links[link_pair], method)
 
     def update_path_resources(self, path, v_net_link, method='+'):
         """Update (increase) the value of links atributes of path with the same increments."""
         assert len(path) >= 1
-        for l_attr in self.link_attrs:
-            l_attr.update_path(self, path, v_net_link, method)
+        for l_attr in self.link_attrs.values():
+            if l_attr.type != 'resource':
+                continue
+            l_attr.update_path(v_net_link, self, path, method)
 
     ### Benchmark ###
     def _get_attr_benchmarks(self, attr_types: list, attrs_list: list, attr_data: np.ndarray) -> dict:
@@ -380,6 +386,8 @@ class Network(nx.Graph):
 
     @lru_cache
     def get_degree_benchmark(self):
+        if self.number_of_nodes() == 0:
+            return 0.
         return max(list(dict(self.degree).values()))
 
     @lru_cache
@@ -390,6 +398,8 @@ class Network(nx.Graph):
         else:
             n_attrs = self.get_node_attrs(node_attr_types)
         n_attrs = self.get_node_attrs(node_attr_types)
+        if not n_attrs:
+            return {}
         node_data = np.array(self.get_node_attrs_data(n_attrs), dtype=np.float32)
         node_attr_benchmarks = self._get_attr_benchmarks(node_attr_types, n_attrs, node_data)
         return node_attr_benchmarks
@@ -401,6 +411,8 @@ class Network(nx.Graph):
             link_attr_types = [l_attr.type for l_attr in l_attrs]
         else:
             l_attrs = self.get_link_attrs(link_attr_types)
+        if not l_attrs:
+            return {}
         link_data = np.array(self.get_link_attrs_data(l_attrs), dtype=np.float32)
         link_data = np.concatenate([link_data, link_data], axis=1)
         link_attr_benchmarks = self._get_attr_benchmarks(link_attr_types, l_attrs, link_data)
@@ -413,6 +425,8 @@ class Network(nx.Graph):
             link_attr_types = [l_attr.type for l_attr in l_attrs]
         else:
             l_attrs = self.get_link_attrs(link_attr_types)
+        if not l_attrs:
+            return {}
         link_sum_attrs_data = np.array(self.get_aggregation_attrs_data(l_attrs, aggr='sum'), dtype=np.float32)
         link_sum_attr_benchmarks = self._get_attr_benchmarks(link_attr_types, l_attrs, link_sum_attrs_data)
         return link_sum_attr_benchmarks

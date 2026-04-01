@@ -111,6 +111,12 @@ class Controller:
         # link mapping
         self.shortest_method = kwargs.get('shortest_method', 'k_shortest')
 
+    def _get_operational_p_net(self, p_net: PhysicalNetwork, time_slot=None):
+        """Return the active substrate view when temporal metadata is available."""
+        if hasattr(p_net, 'get_active_subgraph'):
+            return p_net.get_active_subgraph(time_slot)
+        return p_net
+
     def check_attributes(self, v: dict, p: dict, attrs_list: list) -> Tuple[bool, dict]:
         """
         Check if node-level or link-level specified attributes in the specified node are satisfied.
@@ -173,7 +179,9 @@ class Controller:
             final_result (bool): True if all node constraints are satisfied, False otherwise.
             node_satisfiability_info (dict): A dictionary containing the satisfiability information of the node constraints.
         """
-        assert p_node_id in list(p_net.nodes)
+        runtime_p_net = self._get_operational_p_net(p_net)
+        if p_node_id not in list(runtime_p_net.nodes):
+            return False, {attr.name: -np.inf if attr.type == 'resource' else 0. for attr in self.all_node_attrs}
         v_node, p_node = v_net.nodes[v_node_id], p_net.nodes[p_node_id]
         final_result, node_satisfiability_info = self.check_attributes(v_node, p_node, self.all_node_attrs)
         return final_result, node_satisfiability_info
@@ -199,7 +207,13 @@ class Controller:
                                               The keys of the dictionary are the names of the constraints,
                                               and the values are either the violation values or 0 if the constraint is satisfied.
         """
-        v_link, p_link = v_net.links[v_link_pair], p_net.links[p_link_pair]
+        runtime_p_net = self._get_operational_p_net(p_net)
+        runtime_link_pair = p_link_pair
+        if runtime_link_pair not in runtime_p_net.links and (runtime_link_pair[1], runtime_link_pair[0]) in runtime_p_net.links:
+            runtime_link_pair = (runtime_link_pair[1], runtime_link_pair[0])
+        if runtime_link_pair not in runtime_p_net.links:
+            return False, {attr.name: -np.inf if attr.type == 'resource' else 0. for attr in self.all_link_attrs}
+        v_link, p_link = v_net.links[v_link_pair], p_net.links[runtime_link_pair]
         final_result, link_satisfiability_info = self.check_attributes(v_link, p_link, self.all_link_attrs)
         return final_result, link_satisfiability_info
 
@@ -1160,25 +1174,27 @@ class Controller:
             elif method == 'k_shortest_length':
                 # find the shortest paths with the length less than k
                 shortest_paths = []
-                for path in nx.shortest_simple_paths(p_net, source, target, weight=weight):
+                runtime_p_net = self._get_operational_p_net(p_net)
+                for path in nx.shortest_simple_paths(runtime_p_net, source, target, weight=weight):
                     if len(path) <= k:
                         shortest_paths.append(path)
                     else:
                         break
             elif method == 'all_shortest':
-                shortest_paths = list(nx.all_shortest_paths(p_net, source, target, weight=weight))
+                runtime_p_net = self._get_operational_p_net(p_net)
+                shortest_paths = list(nx.all_shortest_paths(runtime_p_net, source, target, weight=weight))
             # these two methods return a fessible path or empty by considering link constraints
             elif method == 'bfs_shortest':
                 if weight is not None:
                     raise NotImplementedError('BFS Shortest Path Method not supports seeking for weighted shorest path!')
-                shortest_path = self.find_bfs_shortest_path(v_net, p_net, v_link, source, target, weight=weight)
+                shortest_path = self.find_bfs_shortest_path(v_net, self._get_operational_p_net(p_net), v_link, source, target, weight=weight)
                 shortest_paths = [] if shortest_path is None else [shortest_path]
             elif method == 'available_shortest':
                 temp_p_net = self.create_available_network(v_net, p_net, v_link)
                 shortest_paths = [nx.dijkstra_path(temp_p_net, source, target, weight=weight)]
             elif method == 'available_k_shortest':
                 temp_p_net = self.create_available_network(v_net, p_net, v_link)
-                shortest_paths = list(islice(nx.shortest_simple_paths(p_net, source, target, weight=weight), k))
+                shortest_paths = list(islice(nx.shortest_simple_paths(temp_p_net, source, target, weight=weight), k))
         except NotImplementedError as e:
             print(e)
         except Exception as e:
@@ -1188,12 +1204,13 @@ class Controller:
         return shortest_paths
 
     def create_available_network(self, v_net: VirtualNetwork, p_net: PhysicalNetwork, v_link_pair):
+        runtime_p_net = self._get_operational_p_net(p_net)
         def available_link(n1, n2):
-            p_link = p_net.links[(n1, n2)]
-            result, info = self.check_link_constraints(v_net, p_net, v_link, p_link)
+            p_link = (n1, n2)
+            result, info = self.check_link_constraints(v_net, runtime_p_net, v_link, p_link)
             return result
         v_link = v_net.links[v_link_pair]
-        sub_graph = nx.subgraph_view(p_net, filter_edge=available_link)
+        sub_graph = nx.subgraph_view(runtime_p_net, filter_edge=available_link)
         return sub_graph
 
     def create_pruned_network(self, v_net: VirtualNetwork, p_net: PhysicalNetwork, v_link_pair, ratio=1., div=0.):
@@ -1211,8 +1228,9 @@ class Controller:
         Returns:
             Network: The pruned network.
         """
+        runtime_p_net = self._get_operational_p_net(p_net)
         def available_link(n1, n2):
-            p_link = p_net.links[(n1, n2)]
+            p_link = runtime_p_net.links[(n1, n2)]
             result, info = self.check_attributes(v_link, p_link, e_attr_list)
             return result
         v_link = copy.deepcopy(v_net.links[v_link_pair])
@@ -1220,7 +1238,7 @@ class Controller:
         for l_attr in e_attr_list:
             v_link[l_attr.name] *= ratio
             v_link[l_attr.name] -= div
-        sub_graph = nx.subgraph_view(p_net, filter_edge=available_link)
+        sub_graph = nx.subgraph_view(runtime_p_net, filter_edge=available_link)
         return sub_graph
 
     def route_v_links_with_mcf(self, v_net: VirtualNetwork, p_net: PhysicalNetwork, v_link_list: list, solution: Solution):
@@ -1364,10 +1382,12 @@ class Controller:
             list: A list of nodes in the shortest path from source to target. 
                 If no path exists, return None.
         """
-        visit_states = [0] * p_net.num_nodes
-        predecessors = {p_n_id: None for p_n_id in range(p_net.num_nodes)}
+        if source not in p_net.nodes or target not in p_net.nodes:
+            return None
+        visit_states = {p_n_id: False for p_n_id in p_net.nodes}
         Q = deque()
         Q.append((source, []))
+        visit_states[source] = True
         found_target = False
         while len(Q) and not found_target:
             current_node, current_path = Q.popleft()
@@ -1384,13 +1404,12 @@ class Controller:
                         break
                     # unvisited
                     if not visit_states[neighbor]:
-                        visit_states[neighbor] = 1
+                        visit_states[neighbor] = True
                         Q.append((neighbor, temp_current_path))
 
-        if len(Q) and not found_target:
+        if not found_target:
             return None
-        else:
-            return shortest_path
+        return shortest_path
         
     def find_candidate_nodes(
             self, 
@@ -1414,9 +1433,10 @@ class Controller:
         Returns:
             candidate_nodes (list): The list of candidate nodes.
         """
-        all_p_nodes = np.array(list(p_net.nodes))
+        runtime_p_net = self._get_operational_p_net(p_net)
+        all_p_nodes = np.array(list(runtime_p_net.nodes))
         if check_node_constraint:
-            suitable_nodes = [p_node_id for p_node_id in all_p_nodes if self.check_node_constraints(v_net, p_net, v_node_id, p_node_id)[0]]
+            suitable_nodes = [p_node_id for p_node_id in all_p_nodes if self.check_node_constraints(v_net, runtime_p_net, v_node_id, p_node_id)[0]]
             candidate_nodes = list(set(suitable_nodes).difference(set(filter)))
         else:
             candidate_nodes = []
@@ -1424,9 +1444,9 @@ class Controller:
             aggr_method = 'sum' if self.shortest_method == 'mcf' else 'max'
             # checked_nodes = candidate_nodes_with_node_constraint if check_node_constraint else list(p_net.nodes)
             v_node_degrees = np.array(list(dict(v_net.degree()).values()))
-            p_node_degrees = np.array(list(dict(p_net.degree()).values()))
+            p_node_degrees = np.array(list(dict(runtime_p_net.degree()).values()))
             v_link_aggr_resource = np.array(v_net.get_aggregation_attrs_data(self.link_resource_attrs, aggr=aggr_method))
-            p_link_aggr_resource = np.array(p_net.get_aggregation_attrs_data(self.link_resource_attrs, aggr=aggr_method))
+            p_link_aggr_resource = np.array(runtime_p_net.get_aggregation_attrs_data(self.link_resource_attrs, aggr=aggr_method))
             degrees_comparison = p_node_degrees[:] >= v_node_degrees[v_node_id]
             resource_comparison = np.all(v_link_aggr_resource[:, [v_node_id]] <= p_link_aggr_resource[:, :], axis=0)
             suitable_nodes = all_p_nodes[np.logical_and(degrees_comparison, resource_comparison)]
@@ -1450,8 +1470,9 @@ class Controller:
             feasible_nodes (list): List of feasible physical nodes ids
         """
         node_constraints_feasible_nodes = []
-        for p_node_id in p_net.nodes:
-            check_result, check_info = self.check_node_constraints(v_net, p_net, v_node_id, p_node_id)
+        runtime_p_net = self._get_operational_p_net(p_net)
+        for p_node_id in runtime_p_net.nodes:
+            check_result, check_info = self.check_node_constraints(v_net, runtime_p_net, v_node_id, p_node_id)
             if check_result:
                 node_constraints_feasible_nodes.append(p_node_id)
         node_constraints_feasible_nodes = list(set(node_constraints_feasible_nodes).difference(set(list(node_slots.values()))))
@@ -1459,7 +1480,7 @@ class Controller:
         for v_neighbor_id, p_neighbor_id in node_slots.items():
             if v_neighbor_id not in v_net.adj[v_node_id]:
                 continue
-            temp_p_net = self.create_available_network(v_net, p_net, (v_neighbor_id, v_node_id))
+            temp_p_net = self.create_available_network(v_net, runtime_p_net, (v_neighbor_id, v_node_id))
             new_feasible_nodes = []
             for p_node_id in feasible_nodes:
                 try:
